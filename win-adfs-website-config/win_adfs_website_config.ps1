@@ -1,7 +1,7 @@
 #!powershell
 
-# Copyright: (c) 2015, Jon Hawkesworth (@jhawkesworth) <figs@unity.demon.co.uk>
-# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+# Copyright: (c) 2019, Marco Torello (@baldator) <marcotorello@gmail.com>
+# MIT License
 
 #Requires -Module Ansible.ModuleUtils.Legacy
 
@@ -92,9 +92,9 @@ if($type -eq "oauth" -and $state -eq "present"){
             RedirectUri             = $redirectUrl
         }
     
-        Add-AdfsClient @parameters
+        $client = Add-AdfsClient @parameters
         $result.changed = $true
-        #TODO: return client secret
+        $result.secret = $client.ClientSecret
     }
     else{
         # Check if client needs to be changed
