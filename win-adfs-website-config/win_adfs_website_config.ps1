@@ -11,13 +11,16 @@ $params = Parse-Args -arguments $args -supports_check_mode $true
 $checkMode      = Get-AnsibleParam -obj $params -name "_ansible_check_mode" -type "bool" -default $false
 $diffMode       = Get-AnsibleParam -obj $params -name "_ansible_diff" -type "bool" -default $false
 
-$name            = Get-AnsibleParam -obj $params -name "name" -type "str" -failifempty $true
-$state           = Get-AnsibleParam -obj $params -name "state" -type "str" -default "present" -validateset "absent","present"
-$endpoints       = Get-AnsibleParam -obj $params -name "endpoints" -type "list" -failifempty $true
-$claimsrules     = Get-AnsibleParam -obj $params -name "claimsrules" -type "str" -failifempty $true
-$oauthClientType = Get-AnsibleParam -obj $params -name "oauth_clients_type" -type "str" -default "Public" -validateSet "public", "confidential"
-$scopes          = Get-AnsibleParam -obj $params -name "oauth_scopes" -type "list" -default "allatclaims" -validateSet "allatclaims","openid"
-$type            = Get-AnsibleParam -obj $params -name "type" -type "str" -default "saml" -validateSet "saml", "oauth"
+$name               = Get-AnsibleParam -obj $params -name "name" -type "str" -failifempty $true
+$state              = Get-AnsibleParam -obj $params -name "state" -type "str" -default "present" -validateset "absent","present"
+$endpoints          = Get-AnsibleParam -obj $params -name "endpoints" -type "list" -failifempty $true
+$claimsrules        = Get-AnsibleParam -obj $params -name "claimsrules" -type "str" -failifempty $true
+$oauthClientType    = Get-AnsibleParam -obj $params -name "oauth_clients_type" -type "str" -default "Public" -validateSet "public", "confidential"
+$scopes             = Get-AnsibleParam -obj $params -name "oauth_scopes" -type "list" -default "allatclaims" -validateSet "allatclaims","openid"
+# TODO: Add documentation for the options below
+$signatureAlgorithm = Get-AnsibleParam -obj $params -name "signature_algorithm" -type "str" -default "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" -validateSet "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256","http://www.w3.org/2000/09/xmldsig#rsa-sha1"
+$notBeforeSkew      = Get-AnsibleParam -obj $params -name "not_before_skew" -type "int"
+$type               = Get-AnsibleParam -obj $params -name "type" -type "str" -default "saml" -validateSet "saml", "oauth"
 
 $beforeValue = Get-AdfsRelyingPartyTrust -name $name
 if($type -eq "oauth"){
@@ -34,14 +37,35 @@ $result = @{
 
 if($state -eq "present" -and $null -eq $beforeValue) {
     if(-not $checkMode) {
-        Add-AdfsRelyingPartyTrust -Name $name -Identifier $name -IssuanceTransformRules $claimsrules
+        $parameters = @{
+            Identifier              = $name
+            Name                    = $name
+            IssuanceTransformRules  = $claimsrules
+            SignatureAlgorithm      = $signatureAlgorithm
+        }
+        if($null -ne $notBeforeSkew){
+            $parameters.NotBeforeSkew = $notBeforeSkew
+        }
+
+        Add-AdfsRelyingPartyTrust @parameters
     }
     $result.changed = $true
 
 } elseif($state -eq "present" -and $null -ne $beforeValue) {
-    if($($beforeValue.IssuanceTransformRules -replace "\r\n", "") -ne $claimsrules){
+    if($($beforeValue.IssuanceTransformRules -replace "\r\n", "") -ne $claimsrules `
+        -or ($beforeValue.signatureAlgorithm -ne $signatureAlgorithm) `
+        -or ($beforeValue.NotBeforeSkew -ne $notBeforeSkew)){
         if(-not $checkMode) {
-            Set-AdfsRelyingPartyTrust -TargetIdentifier $name -IssuanceTransformRules $claimsrules
+            $parameters = @{
+                TargetIdentifier        = $name
+                IssuanceTransformRules  = $claimsrules
+                SignatureAlgorithm      = $signatureAlgorithm
+            }
+            if($null -ne $notBeforeSkew){
+                $parameters.NotBeforeSkew = $notBeforeSkew
+            }
+
+            Set-AdfsRelyingPartyTrust @parameters
         }
         $result.changed = $true
     }
@@ -72,7 +96,7 @@ if($type -eq "oauth" -and $state -eq "present"){
     $endpoints | foreach-object{
         $redirectUrl += $_.redirecturl
     }
-    
+
     $GenerateClientSecret = $false
     if($oauthClientType -eq "Confidential"){
         $GenerateClientSecret = $true
@@ -91,7 +115,7 @@ if($type -eq "oauth" -and $state -eq "present"){
             GenerateClientSecret    = $GenerateClientSecret
             RedirectUri             = $redirectUrl
         }
-    
+
         $client = Add-AdfsClient @parameters
         $result.changed = $true
         $result.secret = $client.ClientSecret
@@ -104,12 +128,12 @@ if($type -eq "oauth" -and $state -eq "present"){
                 TargetName      = $name
                 RedirectUri     = $redirectUrl
             }
-        
+
             Set-AdfsClient @parameters
             $result.changed = $true
         }
     }
-    
+
     $beforeValueAppPermission = Get-AdfsApplicationPermission -ClientRoleIdentifiers $name | Where-Object {$_.serverRoleIdentifier -eq $name}
 
     if($null -eq $beforeValueAppPermission){
