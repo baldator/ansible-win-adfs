@@ -1,4 +1,5 @@
 # ansible-win-adfs
+[![License](http://img.shields.io/:license-mit-blue.svg)](http://doge.mit-license.org)
 
 Ansible module to automate Active Directory Federation Service relying parties and clients creation.
 The module support SAML and Oauth2 websites.
