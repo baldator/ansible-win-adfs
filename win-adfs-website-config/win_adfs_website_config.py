@@ -14,8 +14,8 @@ module: win_adfs_website_config
 version_added: '2.7'
 short_description: Create an ADFS configuration for a SAML/OAuth2 compatible website
 description:
-- TODO.
-- TODO
+- Ansible module to automate Active Directory Federation Service relying parties and clients creation.
+- The module support SAML and Oauth2 websites.
 author:
 - Marco Torello (@baldator)
 options:
@@ -29,7 +29,7 @@ options:
     description:
     - Define if the website configuration is present or not
     type: string
-    choices: 
+    choices:
     - Present
     - Absent
     default: Present
@@ -64,8 +64,8 @@ options:
     type: string
   type:
     description:
-    - The website .
-    choices: 
+    - The website authenticatin protocol.
+    choices:
     - saml
     - oauth
     default: saml
@@ -91,7 +91,7 @@ EXAMPLES = r'''
         - redirecturl: https://localhost1234
           method: POST
           protocol: SAMLAssertionConsumer
-        - redirecturl: https://localhost12345 
+        - redirecturl: https://localhost12345
           method: POST
           protocol: SAMLAssertionConsumer
 '''
