@@ -135,7 +135,7 @@ if($type -eq "oauth" -and $state -eq "present"){
         $GenerateClientSecret = $true
     }
 
-    if($beforeValueClient.ClientType -ne $oauthClientType){
+    if($null -ne $beforeValueClient -and $beforeValueClient.ClientType -ne $oauthClientType){
         Revoke-AdfsApplicationPermission -TargetClientRoleIdentifier $name -TargetServerRoleIdentifier $name
         Remove-AdfsClient -TargetName $name
     }
